@@ -7,6 +7,8 @@ using Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using WebAPI.Dtos;
+using WebAPI.Filters;
 using WebAPI.Models;
 
 namespace WebAPI.Controllers
@@ -37,6 +39,7 @@ namespace WebAPI.Controllers
         [HttpGet("{id}", Name = "Get")]
         public async Task<Product> Get(int id)
         {
+            //throw new Exception("test handler exception setting startup");
             using (var conn = new SqlConnection(_connectString))
             {
                 if (conn.State == System.Data.ConnectionState.Closed)
@@ -52,6 +55,7 @@ namespace WebAPI.Controllers
 
         // POST: api/Product
         [HttpPost]
+        [ValidateModel]
         public async Task<int> Post([FromBody] Product product)
         {
             int newId = 0;
@@ -75,6 +79,7 @@ namespace WebAPI.Controllers
 
         // PUT: api/Product/5
         [HttpPut("{id}")]
+        [ValidateModel]
         public async Task Put(int id, [FromBody] Product product)
         {
             using (var conn = new SqlConnection(_connectString))
@@ -91,8 +96,36 @@ namespace WebAPI.Controllers
             }
         }
 
-    // DELETE: api/ApiWithActions/5
-    [HttpDelete("{id}")]
+        // PUT: api/Product/5
+        [HttpGet( "paging", Name = "GetPaging")]
+        public async Task<PageResult<Product>> GetPaging(string keywork, int category, int pageIndex, int pageSize)
+        {
+            using (var conn = new SqlConnection(_connectString))
+            {
+                if (conn.State == System.Data.ConnectionState.Closed)
+                    conn.Open();
+                var parameters = new DynamicParameters();
+                parameters.Add("@keywork", keywork);
+                parameters.Add("@category", category);
+                parameters.Add("@pageIndex", pageIndex);
+                parameters.Add("@pageSize", pageSize);
+                parameters.Add("@totalRow", dbType: System.Data.DbType.Int32, direction: System.Data.ParameterDirection.Output);
+                var result = await conn.QueryAsync<Product>("Get_Product_AllPaging", parameters, null, null, System.Data.CommandType.StoredProcedure);
+
+                var totalRow = parameters.Get<int>("@totalRow");
+                var pagedResult = new PageResult<Product>
+                {
+                    Items = result.ToList(),
+                    TotalRow = totalRow,
+                    PageIndex = pageIndex,
+                    PageSize = pageSize
+                };
+                return pagedResult;
+            }
+        }
+
+        // DELETE: api/ApiWithActions/5
+        [HttpDelete("{id}")]
         public async Task  Delete(int id)
         {
             using (var conn = new SqlConnection(_connectString))
