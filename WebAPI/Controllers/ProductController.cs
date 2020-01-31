@@ -1,31 +1,48 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using WebAPI.Dtos;
+using WebAPI.Extensions;
 using WebAPI.Filters;
 using WebAPI.Models;
+using WebAPI.Resources;
 
 namespace WebAPI.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/{culture}/[controller]")]
     [ApiController]
+    [MiddlewareFilter(typeof(LocalizationPipeline))]
+
     public class ProductController : ControllerBase
     {
         private readonly string _connectString;
-        public ProductController(IConfiguration configuration)
+        private readonly ILogger<ProductController> _logger;
+        private readonly IStringLocalizer<ProductController> _localizer;
+        private readonly LocService _locService;
+        public ProductController(IConfiguration configuration, ILogger<ProductController> logger, IStringLocalizer<ProductController> localizer, LocService locService)
         {
             _connectString = configuration.GetConnectionString("DefaultConnection");
+            _logger = logger;
+            _localizer = localizer;
+            _locService = locService;
         }
         // GET: api/Product
         [HttpGet]
         public async Task<IEnumerable<Product>> Get()
         {
+            var culture = CultureInfo.CurrentCulture.Name;
+            string testing = _localizer["Test"];
+            string text1 = _locService.GetLocalizedHtmlString("ForgotPassword");
+            //_logger.LogTrace("Test product controller");
             using (var conn = new SqlConnection(_connectString))
             {
                 if (conn.State == System.Data.ConnectionState.Closed)
@@ -40,6 +57,7 @@ namespace WebAPI.Controllers
         public async Task<Product> Get(int id)
         {
             //throw new Exception("test handler exception setting startup");
+            
             using (var conn = new SqlConnection(_connectString))
             {
                 if (conn.State == System.Data.ConnectionState.Closed)
